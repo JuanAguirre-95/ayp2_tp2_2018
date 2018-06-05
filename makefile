@@ -1,12 +1,13 @@
 nombre_tp = tp2
 
 archivos = analog.c makefile
-mensaje = "commit vacio"
+mensaje = 
 git_add:
 	git add $(archivos)
 git_commit: git_add
-	@read -p "Mensaje de commit: " mensaje;
-	git commit -m $(mensaje)
+	@echo "Mensaje de commit: "
+	@read mensaje
+	git commit -m $mensaje
 	
 git_pull:
 	git pull origin
