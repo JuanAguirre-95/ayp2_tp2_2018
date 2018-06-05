@@ -11,5 +11,5 @@ git_commit: git_add
 git_pull:
 	git pull origin
 	
-git_push: git_commit
+git_push:
 	git push origin master
