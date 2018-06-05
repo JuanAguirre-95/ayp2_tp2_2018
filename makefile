@@ -5,8 +5,8 @@ mensaje =
 git_add:
 	git add $(archivos)
 git_commit: git_add
-	@read -p "Enter file name: " FILENAME; \
-    git commit -m "$$FILENAME"
+	@read -p "Mensaje del commit: " MENSAJE; \
+    git commit -m "$$MENSAJE"
 	
 git_pull:
 	git pull origin
