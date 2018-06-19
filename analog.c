@@ -27,7 +27,17 @@ time_t iso8601_to_time(const char* iso8601){
     strptime(iso8601, TIME_FORMAT, &bktime);
     return mktime(&bktime);
 }
+//==========|UTILIDADES|===========
 
+//Cuenta la cantidad de elementos dentro de un strv
+size_t count_strv(char** strv){
+	size_t cont = 0;
+	if(!strv)
+		return 0;
+	while(strv[cont] != NULL)
+		cont++;
+	return cont;
+}
 //==========|Func. Extras para DoS|==========
 int comparar_ips(const char* ip1, const char* ip2){
     int flag = 0;
@@ -62,3 +72,47 @@ int comparar_ips(const char* ip1, const char* ip2){
 }
 
 //==========|FUNC. PARA ORDENAR ARCHIVO|==========
+bool ordenar_archivo(char* nombre_entrada, char* nombre_salida){
+	
+}
+
+//===========|FUNC PARA AGREGAR_ARCHIVO|==============
+bool agregar_archivo(char* nombre_archivo){
+	
+}
+
+//==========|INTERFAZ|===========
+
+void interfaz(char* comando){
+	bool exit_flag = false;
+	
+	char** com_sep = split(comando, ' ');
+	char* command = com_sep[0];
+	
+	if(strcmp(command, "ordenar_archivo") == 0){			//ORDENAR_ARCHIVO
+		exit_flag = ordenar_archivo(com_sep[1],com_sep[2]);
+		if(exit_flag){
+			//free_strv(com_sep);
+			fprintf(stdout,"OK\n");
+		}
+	}
+	
+	if(strcmp(command, "agregar_archivo") == 0){			//AGREGAR_ARCHIVO
+		exit_flag = agregar_archivo(com_sep[1]);
+		if(exit_flag){
+			//free_strv(com_sep);
+			fprintf(stdout,"OK\n");
+		}	
+	}	
+	if(strcmp(command, "ver_visitantes") == 0){			//VER_VISITANTES
+		exit_flag = ver_visitantes(com_sep[1],com_sep[2]);
+		if(exit_flag){
+			//free_strv(com_sep);
+			fprintf(stdout,"OK\n");
+		}	
+	}	
+	else{
+		fprintf(stderr, "Error en comando %s",command);
+	}
+	free_strv(com_sep);
+}
