@@ -1,7 +1,7 @@
 nombre_tp = tp2
 
 archivos = analog.c makefile
-mensaje = 
+
 git_add:
 	git add $(archivos)
 git_commit: git_add
