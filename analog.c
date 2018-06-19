@@ -7,10 +7,17 @@
 #include <stdbool.h>
 #include <string.h>
 
+//HEADERS EXTERNOS
 #include "strutil.h"
 #include "heap.h"
 #include "abb.h"
 #include "hash.h"
+#include "lista.h"
+
+//CONSTANTES
+#define DOS_CANT 5
+#define DOS_TIME 2.0
+
 
 //==========|Structs|============
 typedef struct request {
@@ -37,6 +44,16 @@ size_t count_strv(char** strv){
 	while(strv[cont] != NULL)
 		cont++;
 	return cont;
+}
+
+request_t request_crear(char* ip,time_t hora,char* metodo, char* recurso){
+	request_t req = malloc(sizeof(request_t));
+	if(!req)
+		return NULL;
+	req->ip = strdup(ip);
+	req->hora = hora;
+	req->metodo = strdup(metodo);
+	req->recurso = strdup(recurso);
 }
 //==========|Func. Extras para DoS|==========
 int comparar_ips(const char* ip1, const char* ip2){
@@ -77,7 +94,54 @@ bool ordenar_archivo(char* nombre_entrada, char* nombre_salida){
 }
 
 //===========|FUNC PARA AGREGAR_ARCHIVO|==============
+bool hash_guardar_tiempos(hash_t* hash_tiempos, const char* ip, time_t tiempo){
+	if(!hash_tiempos)
+		return false;
+	if(hash_pertenece(hash_tiempos,ip)){ //si la ip ya esta guardada
+		lista_t* lista_tiempos_ip = hash_obtener(hash_tiempos,ip); //obtengo la lista de tiempos de esa ip
+		lista_insertar_ultimo(lista_tiempos_ip,(void*)tiempo); //inserto el nuevo tiempo al final
+		return true;
+	}
+	if(!hash_pertenece(hash_tiempos,ip)){ //Si la ip no pertenece al hash creo lista nueva y la guardo
+		lista_t* new_lista = lista_crear();
+		lista_insertar_ultimo(new_lista, (void*)tiempo);
+		hash_guardar(hash_tiempos,ip,new_lista);
+		return true;
+	}
+	return false;
+
 bool agregar_archivo(char* nombre_archivo){
+	if(!nombre_archivo){
+		return false;
+	}
+	FILE* archivo = fopen(nombre_archivo,"r");
+	if(!file)
+		return false;
+	
+	hash_t* hash_tiempos = hash_crear(wrapper_lista_destruir);
+	if(!hash_tiempos){
+		fclose(archivo);
+		return false;
+	}
+	abb_t* arbol_dos = abb_crear(comparar_ips,free);
+	if(!arbol_dos){
+		hash_destruir(hash_tiempos);
+		fclose(archivo)
+		return false;
+	}
+	
+	char* linea = NULL; size_t size = 0; ssize_t leidos;
+	while((leidos  = getline(&linea,&size,archivo))>0){
+		linea[leidos-1] = '\0';
+		
+		char** acceso = split(linea,'\t');
+		char* ip = acceso[0];
+		time_t hora = iso8601_to_time(acceso[1]);
+		char* metodo = acceso[2];
+		char* recurso = acceso[3];
+		
+		
+	}
 	
 }
 
