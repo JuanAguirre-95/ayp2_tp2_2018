@@ -15,12 +15,12 @@
 #include "lista.h"
 
 //CONSTANTES
-#define DOS_CANT 5
-#define DOS_TIME 2.0
+#define DOS_CANT 5 //la cantidad de accesos en x tiempo para determinar un DoS
+#define DOS_TIME 2.0 //el tiempo entre accesos para determinar un DoS
 
 
 //==========|Structs|============
-typedef struct request {
+typedef struct request { //NO VA A HACER FALTA
 	char* ip;
 	time_t hora;
 	char* metodo;
@@ -46,17 +46,8 @@ size_t count_strv(char** strv){
 	return cont;
 }
 
-request_t request_crear(char* ip,time_t hora,char* metodo, char* recurso){
-	request_t req = malloc(sizeof(request_t));
-	if(!req)
-		return NULL;
-	req->ip = strdup(ip);
-	req->hora = hora;
-	req->metodo = strdup(metodo);
-	req->recurso = strdup(recurso);
-}
 //==========|Func. Extras para DoS|==========
-int comparar_ips(const char* ip1, const char* ip2){
+int comparar_ips(const char* ip1, const char* ip2){		//TODO TRATAR DE MEJORAR ESTA NEGRADA
     int flag = 0;
     char** ip1_partes = split(ip1, '.');
     int ip1_campos[4];
@@ -90,7 +81,7 @@ int comparar_ips(const char* ip1, const char* ip2){
 
 //==========|FUNC. PARA ORDENAR ARCHIVO|==========
 bool ordenar_archivo(char* nombre_entrada, char* nombre_salida){
-	
+	//TODO	implementar esto!
 }
 
 //===========|FUNC PARA AGREGAR_ARCHIVO|==============
@@ -109,8 +100,42 @@ bool hash_guardar_tiempos(hash_t* hash_tiempos, const char* ip, time_t tiempo){
 		return true;
 	}
 	return false;
+bool verificar_accesos(lista_t* lista_tiempos){
+	//TODO VERIFICAR SI HAY DoS EN UNA LISTA DE TIEMPOS
 
-bool agregar_archivo(char* nombre_archivo){
+}
+abb_t* check_dos(hash_t* hash_tiempos){			//Devuelve un arbol con las ips que causaron DoS.
+	abb_t* arbol_dos = abb_crear(comparar_ips,free);
+	if(!arbol_dos)
+		return NULL;
+	
+	hash_iter_t* iter = hash_iter_crear(hash_tiempos);
+	if(!iter){
+		abb_destruir(arbol_dos);
+		return NULL;
+	}
+	
+	while(!hash_iter_al_final(iter)){	
+		const char* ip = hash_iter_ver_actual(iter);
+		lista_t* lista = hash_obtener(hash_tiempos,ip);
+		if(verificar_accesos(lista)){
+			abb_guardar(abb_dos,ip,NULL);
+		}
+		hash_iter_avanzar(iter);
+	}
+	hash_iter_destruir(iter);
+	return arbol_dos;
+}
+bool imprimir_ip_dos(const char* clave, void* dato,void* extra){
+	fprintf(stdout,"DoS: %s\n",clave)
+	return true;
+}
+
+void imprimir_dos(abb_t* arbol_dos){
+	abb_in_order(arbol_dos, imprimir_ip_dos, NULL);
+}
+
+bool agregar_archivo(char* nombre_archivo, abb_t* arbol_ips){
 	if(!nombre_archivo){
 		return false;
 	}
@@ -123,27 +148,63 @@ bool agregar_archivo(char* nombre_archivo){
 		fclose(archivo);
 		return false;
 	}
-	abb_t* arbol_dos = abb_crear(comparar_ips,free);
-	if(!arbol_dos){
-		hash_destruir(hash_tiempos);
-		fclose(archivo)
-		return false;
-	}
-	
+
 	char* linea = NULL; size_t size = 0; ssize_t leidos;
 	while((leidos  = getline(&linea,&size,archivo))>0){
 		linea[leidos-1] = '\0';
 		
 		char** acceso = split(linea,'\t');
+		
 		char* ip = acceso[0];
 		time_t hora = iso8601_to_time(acceso[1]);
 		char* metodo = acceso[2];
 		char* recurso = acceso[3];
 		
+		if(!abb_pertenece(ip)){
+			abb_guardar(arbol_ips,ip,NULL);
+		}
+		hash_guardar_tiempos(hash_tiempos,ip,hora);
 		
+		free_strv(acceso);
+	}
+	abb_t* arbol_dos = check_dos(hash_tiempos);
+	if(!arbol_dos){
+		hash_destruir(hash_tiempos);
+		fclose(archivo);
+		free(linea);
+		return false;
+	}
+	if(abb_cantidad(arbol_dos) != 0){
+		imprimir_dos(arbol_dos);
 	}
 	
+	hash_destruir(hash_tiempos);
+	abb_destruir(arbol_dos);
+	free(linea);
+	return true;
+	
 }
+//==========|FUNC PARA VER VISITANTES|===========
+bool imprimir_ip_rango(const char* clave, void* dato,void* extra){
+	char** rango = extra;
+	if(!(comparar_ips(clave,rango[0])<0) && !(comparar_ips(clave,rango[1])>0)) //si comparar ips devuelve 0 y esta dentro de rango imprime
+		printf("\t%s\n",clave);
+	return true;
+}
+
+bool ver_visitantes(abb_t* arbol_ips, char* desde, char* hasta){
+    if(abb_cantidad(arbol_ips) == 0)
+    	return false;
+    char** rango = malloc(sizeof(char*)*2);
+    rango[0] = desde;
+    rango[1] = hasta; 
+    printf("Visitantes:\n");
+    abb_in_order(arbol_ips, imprimir_ip_rango,(void*)rango);
+    fprintf(stdout,"OK\n" );
+    free(rango);
+    return true;
+}
+
 
 //==========|INTERFAZ|===========
 
@@ -153,7 +214,12 @@ void interfaz(char* comando){
 	char** com_sep = split(comando, ' ');
 	char* command = com_sep[0];
 	
-	if(strcmp(command, "ordenar_archivo") == 0){			//ORDENAR_ARCHIVO
+	abb_t* arbol_ips = abb_crear(comparar_ips,free);
+	if(!arbol_ips){
+		free_strv(com_sep);
+	}
+	
+	if(strcmp(command, "ordenar_archivo") == 0){					//ORDENAR_ARCHIVO
 		exit_flag = ordenar_archivo(com_sep[1],com_sep[2]);
 		if(exit_flag){
 			//free_strv(com_sep);
@@ -161,22 +227,24 @@ void interfaz(char* comando){
 		}
 	}
 	
-	if(strcmp(command, "agregar_archivo") == 0){			//AGREGAR_ARCHIVO
-		exit_flag = agregar_archivo(com_sep[1]);
+	if(strcmp(command, "agregar_archivo") == 0){					//AGREGAR_ARCHIVO
+		
+		exit_flag = agregar_archivo(com_sep[1],arbol_ips);
 		if(exit_flag){
 			//free_strv(com_sep);
 			fprintf(stdout,"OK\n");
 		}	
 	}	
-	if(strcmp(command, "ver_visitantes") == 0){			//VER_VISITANTES
-		exit_flag = ver_visitantes(com_sep[1],com_sep[2]);
+	if(strcmp(command, "ver_visitantes") == 0){					//VER_VISITANTES
+		exit_flag = ver_visitantes(arbol_ips,com_sep[1],com_sep[2]);
 		if(exit_flag){
 			//free_strv(com_sep);
 			fprintf(stdout,"OK\n");
 		}	
 	}	
-	else{
+	else{													//SI TO.DO FALLA
 		fprintf(stderr, "Error en comando %s",command);
+		abb_destruir(arbol_ips);
 	}
 	free_strv(com_sep);
 }
