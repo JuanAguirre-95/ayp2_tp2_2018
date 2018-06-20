@@ -195,6 +195,7 @@ bool imprimir_ip_rango(const char* clave, void* dato,void* extra){
 bool ver_visitantes(abb_t* arbol_ips, char* desde, char* hasta){
     if(abb_cantidad(arbol_ips) == 0)
     	return false;
+    
     char** rango = malloc(sizeof(char*)*2);
     rango[0] = desde;
     rango[1] = hasta; 
@@ -208,43 +209,30 @@ bool ver_visitantes(abb_t* arbol_ips, char* desde, char* hasta){
 
 //==========|INTERFAZ|===========
 
-void interfaz(char* comando){
+bool interfaz(char** comando){
 	bool exit_flag = false;
 	
-	char** com_sep = split(comando, ' ');
+	//char** com_sep = split(comando, ' ');
 	char* command = com_sep[0];
 	
 	abb_t* arbol_ips = abb_crear(comparar_ips,free);
 	if(!arbol_ips){
 		free_strv(com_sep);
+		return false;
 	}
 	
 	if(strcmp(command, "ordenar_archivo") == 0){					//ORDENAR_ARCHIVO
 		exit_flag = ordenar_archivo(com_sep[1],com_sep[2]);
-		if(exit_flag){
-			//free_strv(com_sep);
-			fprintf(stdout,"OK\n");
-		}
 	}
 	
 	if(strcmp(command, "agregar_archivo") == 0){					//AGREGAR_ARCHIVO
-		
 		exit_flag = agregar_archivo(com_sep[1],arbol_ips);
-		if(exit_flag){
-			//free_strv(com_sep);
-			fprintf(stdout,"OK\n");
-		}	
 	}	
 	if(strcmp(command, "ver_visitantes") == 0){					//VER_VISITANTES
 		exit_flag = ver_visitantes(arbol_ips,com_sep[1],com_sep[2]);
-		if(exit_flag){
-			//free_strv(com_sep);
-			fprintf(stdout,"OK\n");
-		}	
 	}	
-	else{													//SI TO.DO FALLA
-		fprintf(stderr, "Error en comando %s",command);
-		abb_destruir(arbol_ips);
-	}
+	
+	abb_destruir(arbol_ips);
 	free_strv(com_sep);
+	return exit_flag;
 }
