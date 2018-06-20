@@ -1,0 +1,4 @@
+agregar_archivo ./logs/access001.log
+agregar_archivo ./logs/access002.log
+ver_visitantes 100.0.0.0 200.0.0.0
+ordenar_archivo ./logs/access010.log ./logs/access010-ordenado.log
