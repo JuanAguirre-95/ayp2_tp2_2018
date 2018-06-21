@@ -13,7 +13,7 @@
 
 
 
- 
+
 /*STRING TO TIME_T*/
 time_t iso8601_to_time(const char* iso8601){
     struct tm bktime = { 0 };
@@ -75,23 +75,27 @@ registro_t* crear_registro(char* linea, size_t n_particion){
 int comparar_lineas(char* linea1, char* linea2){
   char** campos1 = split(linea1,'	');
   char** campos2 = split(linea2,'	');
+  size_t resultado = comparar_ips(campos1[0],campos2[0]);
+  int retorno;
 
   time_t tiempo1 = iso8601_to_time(campos1[1]);
   time_t tiempo2 = iso8601_to_time(campos2[1]);
   if(difftime(tiempo1,tiempo2) > 0){
-    return 1;
+    retorno = 1;
   }
-  if(difftime(tiempo1,tiempo2) < 0){
-    return -1;
+  else if(difftime(tiempo1,tiempo2) < 0){
+    retorno = -1;
   }
-  size_t resultado = comparar_ips(campos1[0],campos2[0]);
-  if(resultado == 1){
-    return 1;
+  else if(resultado == 1){
+    retorno = 1;
   }
-  if(resultado == -1){
-    return -1;
+  else if(resultado == -1){
+    retorno = -1;
   }
-  return strcmp(campos1[3],campos2[3]);
+  else retorno = strcmp(campos1[3],campos2[3]);
+  free_strv(campos1);
+  free_strv(campos2);
+  return  -1*retorno;
 }
 
 int func_comp(const void* a, const void* b){
@@ -99,20 +103,18 @@ int func_comp(const void* a, const void* b){
 }
 
 /*crea una particion*/
-bool crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_particion,char* nombre_salida){ //Crear comparador
-  FILE* archivo_salida = fopen(nombre_salida,"wb");
-  if(!archivo_salida){
-    return false;
-  }
+size_t crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_particion,char* nombre_salida){ //Crear comparador
+  size_t total = 0;
   heap_t* heap = heap_crear(func_comp);
   if(!heap){
-    return false;
+    return -1;
   }
   char* linea_archivo=NULL;
   size_t capacidad =0,leidos=0;
   for(int i = 0 ; i < tam_particion ; i++){
     leidos = getline(&linea_archivo,&capacidad,archivo_log);
     if(leidos != -1){
+      total ++;
       linea_archivo[leidos-1] = '\0';
       char* linea =  strdup(linea_archivo);
       heap_encolar(heap,linea);
@@ -120,14 +122,16 @@ bool crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_particion
       break;
     }
   }
-  /* cambio lista por heap? */
-
-  /*ordenar lista, crear funcion de comparacion */
-  /*supongo que tengo lista ordenada*/
-
+  FILE* archivo_salida = fopen(nombre_salida,"wb");
+  if(!archivo_salida){
+    return -1;
+  }
   while(!heap_esta_vacio(heap)){
     char* linea = heap_desencolar(heap);
     registro_t* registro = crear_registro(linea,n_particion);
+    if(!registro){
+      return -1;
+    }
     fwrite(registro,sizeof(registro_t),1,archivo_salida);
     free(registro);
     free(linea);
@@ -135,31 +139,55 @@ bool crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_particion
   fclose(archivo_salida);
   free(linea_archivo);
   heap_destruir(heap,NULL);
-  return true;
+  return total;
+
 }
+
+/*memoria disponibles son kb por eso multiplico por mil
+retorna la cantidad de particiones que hubo*/
+size_t crear_particiones(char* nombre_archivo, size_t memoria_disponible){
+  size_t mem_dispo = 1000;
+  FILE* archivo = fopen(nombre_archivo,"r");
+  if(!archivo){
+    return -1 ;
+  }
+  char nombre_archivo_salida[15];
+  size_t i = 1;
+  size_t guardados;
+
+  while(!feof(archivo)){
+    sprintf(nombre_archivo_salida,"archivo%i.log",i);
+    guardados = crear_particion(archivo,mem_dispo,i,nombre_archivo_salida);
+    if(guardados > 0){
+      i++;
+    }else{
+      break;
+    }
+  }
+  fclose(archivo);
+  return i;
+}
+
 int main(){
 
-  FILE* archivo = fopen("access001.log","r");
-  crear_particion(archivo,2000,1,"archivo_salida.log");
-  fclose(archivo);
-
-
-/*
-  char* linea1= "66.249.73.135	2015-05-17T10:05:15+00:00	GET	/blog/tags/muaaaaaan";
-  char* linea2 = "66.249.73.135	2015-05-17T10:05:15+00:00	GET	/blog";
-
-  int resultado = comparar_lineas(linea1,linea2);
-  if(resultado == 1){
-    printf("linea 1 es mas grande\n");
-  }
-  else if(resultado == -1){
-    printf("linea 2 es mas grande\n" );
-  }
-  else{
-    printf("son iguales\n" );
-  }
-  */
+   size_t i =  crear_particiones("access001.log", 1);
+   printf("cantidad de particiones: %i\n", i);
 
 
 
-}
+    FILE* leer = fopen("archivo1.log","rb");
+    FILE* guardar = fopen("leer.log","w");
+
+    registro_t* registro = malloc(sizeof(registro_t));
+    size_t leidos;
+    while(!feof(leer) ){
+      leidos = fread(registro,sizeof(registro_t),1,leer);
+      if(leidos == 0){
+        break;
+      }
+      fprintf(guardar,"%s\n",registro->linea);
+     printf("La linea del archivo leido es: %s\n",registro->linea );
+     printf("Proviene de la particion es: %i\n",registro->n_particion );
+   }
+
+ }
