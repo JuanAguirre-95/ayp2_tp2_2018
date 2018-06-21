@@ -7,22 +7,27 @@
 #include <string.h>
 #include <time.h>
 #include "strutil.h"
-#include "lista.h"
-
+#include "heap.h"
 #define TAM_MAX_LINEA 135
 
+
+
+
+ 
+/*STRING TO TIME_T*/
 time_t iso8601_to_time(const char* iso8601){
     struct tm bktime = { 0 };
     strptime(iso8601, TIME_FORMAT, &bktime);
     return mktime(&bktime);
 }
 
+/*STRUCT RESGISTRO_T*/
 typedef struct registro{
  char linea[TAM_MAX_LINEA];
  size_t n_particion;
 }registro_t;
 
-
+/*FUNCION COMPARACION IPS*/
 int comparar_ips(char* ip1,char* ip2){
     int flag = 0;
     char** ip1_partes = split(ip1, '.');
@@ -54,6 +59,8 @@ int comparar_ips(char* ip1,char* ip2){
 
     return flag;
 }
+
+/*CREAR REGISTRO*/
 registro_t* crear_registro(char* linea, size_t n_particion){
   registro_t* registro = calloc(1,sizeof(registro_t));
   if(!registro){
@@ -64,6 +71,7 @@ registro_t* crear_registro(char* linea, size_t n_particion){
   return registro;
 }
 
+/*COMPARACION DE DOS LINEAS -- FUNCIONA CORRECTAMENTE*/
 int comparar_lineas(char* linea1, char* linea2){
   char** campos1 = split(linea1,'	');
   char** campos2 = split(linea2,'	');
@@ -86,14 +94,18 @@ int comparar_lineas(char* linea1, char* linea2){
   return strcmp(campos1[3],campos2[3]);
 }
 
+int func_comp(const void* a, const void* b){
+ 	return comparar_lineas((char*)a,(char*)b);
+}
+
 /*crea una particion*/
 bool crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_particion,char* nombre_salida){ //Crear comparador
   FILE* archivo_salida = fopen(nombre_salida,"wb");
   if(!archivo_salida){
     return false;
   }
-  lista_t* lista = lista_crear();
-  if(!lista){
+  heap_t* heap = heap_crear(func_comp);
+  if(!heap){
     return false;
   }
   char* linea_archivo=NULL;
@@ -103,7 +115,7 @@ bool crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_particion
     if(leidos != -1){
       linea_archivo[leidos-1] = '\0';
       char* linea =  strdup(linea_archivo);
-      lista_insertar_ultimo(lista,linea);
+      heap_encolar(heap,linea);
     }else{
       break;
     }
@@ -113,8 +125,8 @@ bool crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_particion
   /*ordenar lista, crear funcion de comparacion */
   /*supongo que tengo lista ordenada*/
 
-  while(!lista_esta_vacia(lista)){
-    char* linea = lista_borrar_primero(lista);
+  while(!heap_esta_vacio(heap)){
+    char* linea = heap_desencolar(heap);
     registro_t* registro = crear_registro(linea,n_particion);
     fwrite(registro,sizeof(registro_t),1,archivo_salida);
     free(registro);
@@ -122,17 +134,17 @@ bool crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_particion
   }
   fclose(archivo_salida);
   free(linea_archivo);
-  lista_destruir(lista,NULL);
+  heap_destruir(heap,NULL);
   return true;
 }
 int main(){
-  /*
+
   FILE* archivo = fopen("access001.log","r");
   crear_particion(archivo,2000,1,"archivo_salida.log");
   fclose(archivo);
 
-  */
 
+/*
   char* linea1= "66.249.73.135	2015-05-17T10:05:15+00:00	GET	/blog/tags/muaaaaaan";
   char* linea2 = "66.249.73.135	2015-05-17T10:05:15+00:00	GET	/blog";
 
@@ -146,6 +158,7 @@ int main(){
   else{
     printf("son iguales\n" );
   }
+  */
 
 
 
