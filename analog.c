@@ -295,6 +295,8 @@ size_t count_strv(char** strv){
 
 
 //===========|FUNC PARA AGREGAR_ARCHIVO|==============
+
+/*@hash_guardar_tiempos*/
 bool hash_guardar_tiempos(hash_t* hash_tiempos, const char* ip, time_t tiempo){
 	if(!hash_tiempos)
 		return false;
@@ -311,7 +313,10 @@ bool hash_guardar_tiempos(hash_t* hash_tiempos, const char* ip, time_t tiempo){
 	}
 	return false;
 
+
 }
+
+/*@verificar_accesos*/
 bool verificar_accesos(lista_t* lista_tiempo){
 	lista_iter_t* iter1 = lista_iter_crear(lista_tiempo);
 	lista_iter_t* iter2 = lista_iter_crear(lista_tiempo);
@@ -327,11 +332,9 @@ bool verificar_accesos(lista_t* lista_tiempo){
 		i++;
 	}
 	while(!lista_esta_vacia(lista_tiempo)){
-
 		time_t tiempo1 = (time_t)lista_iter_ver_actual(iter1);
 		time_t tiempo2 = (time_t)lista_iter_ver_actual(iter2);
 		if(difftime(tiempo2,tiempo1) <= DOS_TIME){
-
 			lista_iter_destruir(iter1);
 			lista_iter_destruir(iter2);
 			return true;
@@ -340,19 +343,18 @@ bool verificar_accesos(lista_t* lista_tiempo){
 		lista_iter_avanzar(iter2);
 		if(lista_iter_al_final(iter2))
 			break;
-
 	}
 	lista_iter_destruir(iter1);
 	lista_iter_destruir(iter2);
 	return false;
-
 }
 
+/*@check_dos */
 abb_t* check_dos(hash_t* hash_tiempos){			//Devuelve un arbol con las ips que causaron DoS.
 	abb_t* arbol_dos = abb_crear(comparar_ips,free);
-	if(!arbol_dos)
+	if(!arbol_dos){
 		return NULL;
-
+  }
 	hash_iter_t* iter = hash_iter_crear(hash_tiempos);
 	if(!iter){
 		abb_destruir(arbol_dos);
@@ -371,45 +373,43 @@ abb_t* check_dos(hash_t* hash_tiempos){			//Devuelve un arbol con las ips que ca
 	return arbol_dos;
 }
 
+/*@imprimir_ip_dos*/
 bool imprimir_ip_dos(const char* clave, void* dato,void* extra){
 	fprintf(stdout,"DoS: %s\n",clave);
 	return true;
 }
 
+/*@imprimir_dos*/
 void imprimir_dos(abb_t* arbol_dos){
 	abb_in_order(arbol_dos, imprimir_ip_dos, NULL);
 }
 
+/*@agregar_archivo*/
 bool agregar_archivo(char* nombre_archivo, abb_t* arbol_ips){
 	if(!nombre_archivo){
 		return false;
 	}
 	FILE* archivo = fopen(nombre_archivo,"r");
-	if(!archivo)
+	if(!archivo){
 		return false;
-
+  }
 	hash_t* hash_tiempos = hash_crear(wrapper_lista_destruir);
 	if(!hash_tiempos){
 		fclose(archivo);
 		return false;
 	}
-
 	char* linea = NULL; size_t size = 0; ssize_t leidos;
 	while((leidos  = getline(&linea,&size,archivo))>0){
 		linea[leidos-1] = '\0';
-
 		char** acceso = split(linea,'\t');
-
 		char* ip = acceso[0];
 		time_t hora = iso8601_to_time(acceso[1]);
 		//char* metodo = acceso[2];
 		//char* recurso = acceso[3];
-
 		if(!abb_pertenece(arbol_ips,ip)){
 			abb_guardar(arbol_ips,ip,NULL);
 		}
 		hash_guardar_tiempos(hash_tiempos,ip,hora);
-
 		free_strv(acceso);
 	}
 	abb_t* arbol_dos = check_dos(hash_tiempos);
@@ -422,13 +422,11 @@ bool agregar_archivo(char* nombre_archivo, abb_t* arbol_ips){
 	if(abb_cantidad(arbol_dos) != 0){
 		imprimir_dos(arbol_dos);
 	}
-
 	hash_destruir(hash_tiempos);
 	abb_destruir(arbol_dos);
 	free(linea);
 	fclose(archivo);
 	return true;
-
 }
 
 //==========|FUNC PARA VER VISITANTES|===========
@@ -443,7 +441,6 @@ bool ver_visitantes(abb_t* arbol_ips, char* desde, char* hasta){
 	if(abb_cantidad(arbol_ips) == 0){
 		return false;
 	}
-
 	char** rango = malloc(sizeof(char*)*2);
 	rango[0] = desde;
 	rango[1] = hasta;
@@ -463,14 +460,12 @@ bool interfaz(char** comando, size_t M, abb_t* arbol_ips){
 	//char** com_sep = split(comando, ' ');
 	size_t cant_args = count_strv(comando);
 	char* command = comando[0];
-
 	if(strcmp(command, "ordenar_archivo") == 0){					//ORDENAR_ARCHIVO
 		if(cant_args != 3){
 			return exit_flag;
 		}
 		exit_flag = ordenar_archivo(M,comando[1],comando[2]);
 	}
-
 	if(strcmp(command, "agregar_archivo") == 0){					//AGREGAR_ARCHIVO
 		if(cant_args != 2){
 			return exit_flag;
