@@ -48,7 +48,6 @@ int comparar_ips(char* ip1,char* ip2){
             flag = 1;
             break;
         }
-
         if(ip1_campos[i] < ip2_campos[i]){
             flag = -1;
             break;
@@ -56,12 +55,12 @@ int comparar_ips(char* ip1,char* ip2){
     }
     free_strv(ip1_partes);
     free_strv(ip2_partes);
-
     return flag;
-}
+  }
 
 /*CREAR REGISTRO*/
 registro_t* crear_registro(char* linea, size_t n_particion){
+  /*uso calloc pq sino tengo problemas con fwrite*/
   registro_t* registro = calloc(1,sizeof(registro_t));
   if(!registro){
     return NULL;
@@ -71,7 +70,7 @@ registro_t* crear_registro(char* linea, size_t n_particion){
   return registro;
 }
 
-/*COMPARACION DE DOS LINEAS -- FUNCIONA CORRECTAMENTE*/
+/*funcion de comparacion */
 int comparar_lineas(char* linea1, char* linea2){
   char** campos1 = split(linea1,'	');
   char** campos2 = split(linea2,'	');
@@ -98,23 +97,31 @@ int comparar_lineas(char* linea1, char* linea2){
   return  -1*retorno;
 }
 
+/*Funcion comparacion lineas wrapper*/
 int func_comp(const void* a, const void* b){
  	return comparar_lineas((char*)a,(char*)b);
 }
+
+/*Funcion comparacion de registros*/
 int func_comp_registro(const void* a, const void* b){
   registro_t* registro_1= (registro_t*)a;
   registro_t* registro_2= (registro_t*)b;
  	return comparar_lineas(registro_1->linea,registro_2->linea);
-
 }
-/*crea una particion*
-retorna la cantidad de lineas leidas*/
+
+
+/*Crea una particion retorna la cantidad de lineas leidas
+ retorna -1 si ocurre un error
+ 0 si no se lee ninguna linea.*/
 size_t crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_particion,char* nombre_salida){
   size_t total_lineas = 0;
   heap_t* heap = heap_crear(func_comp);
   if(!heap){
     return -1;
   }
+
+  /*Encolo en un heap las lineas correspondientes a
+  la particion*/
   char* linea_archivo=NULL;
   size_t capacidad =0,leidos=0;
   for(int i = 0 ; i < tam_particion ; i++){
@@ -132,6 +139,7 @@ size_t crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_partici
   if(!archivo_salida){
     return -1;
   }
+  /*Guardo en un archivo temporal la particion*/
   while(!heap_esta_vacio(heap)){
     char* linea = heap_desencolar(heap);
     registro_t* registro = crear_registro(linea,n_particion);
@@ -149,7 +157,7 @@ size_t crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_partici
 }
 
 /*memoria disponibles son kb por eso multiplico por mil
-retorna la cantidad de particiones que hubo*/
+retorna la cantidad de particiones que se hicieron*/
 size_t crear_particiones(char* nombre_archivo, size_t memoria_disponible){
   size_t cant_lineas = (memoria_disponible*1000)/TAM_MAX_LINEA;
   FILE* archivo = fopen(nombre_archivo,"r");
@@ -174,48 +182,86 @@ size_t crear_particiones(char* nombre_archivo, size_t memoria_disponible){
   fclose(archivo);
   return cant_particiones;
 }
+void  cerrar_archivos(FILE** archivos,size_t tam){
+  for(size_t i = 0; i < tam-1 ; i++){
+    fclose(archivos[i]);
+  }
+  free(archivos);
+}
+void remove_archivos(size_t cantidad_archivos){
+  char nombre_archivo_particion[15];
+  for(size_t i = 0; i < cantidad_archivos -1; i++){
+      sprintf(nombre_archivo_particion,"archivo%i.log",i+1);
+      remove(nombre_archivo_particion);
+  }
+}
 
-int main(){
+void finalizar(FILE** archivos,size_t cant_particiones,heap_t* heap){
+  cerrar_archivos(archivos,cant_particiones);
+  remove_archivos(cant_particiones);
+  heap_destruir(heap,free);
 
-  /*AGRER VALIDACIONES DE ABRIR ARCHIVO Y MALLOCS*/
+}
+bool ordenar_archivo(char* nombre_archivo,char* nombre_salida, size_t memoria_disponible){
    char nombre_archivo_particion[15];
-   size_t cant_particiones =  crear_particiones("access001.log", 10);
-   printf(" Se crearon %i\n", cant_particiones);
-
-  heap_t* heap = heap_crear(func_comp_registro);
+   size_t cant_particiones =  crear_particiones(nombre_archivo,memoria_disponible);
+   heap_t* heap = heap_crear(func_comp_registro);
+   if(!heap){
+     return false;
+   }
    FILE** archivos = calloc(cant_particiones,sizeof(FILE*));
-
-
-
-
+   if(!archivos){
+     heap_destruir(heap,free);
+     return false;
+   }
    for(int i = 0 ; i < cant_particiones-1 ; i++){
       sprintf(nombre_archivo_particion,"archivo%i.log",i+1);
       FILE* archivo = fopen(nombre_archivo_particion,"rb");
+      if(!archivo){
+        heap_destruir(heap,free);
+        cerrar_archivos(archivos,i-1);
+        remove_archivos(cant_particiones);
+        return false;
+      }
       archivos[i] = archivo;
-
       registro_t* registro = malloc(sizeof(registro_t));
       fread(registro,sizeof(registro_t),1,archivo);
-
       heap_encolar(heap,registro);
    }
-
-
    FILE* salida = fopen("archivo_salida.log", "w");
+   if(!salida){
+     finalizar(archivos,cant_particiones,heap);
+     return false;
+   }
 
    while(!heap_esta_vacio(heap)){
-
      registro_t* registro = heap_desencolar(heap);
-     //printf("se desencolo: %s\n",registro->linea);
+     size_t proviene = registro->n_particion;
+
 
      fprintf(salida,"%s\n",registro->linea);
-
-     size_t proviene = registro->n_particion;
-     size_t resultado = fread(registro,sizeof(registro_t),1,archivos[proviene-1]);
+     registro_t* leer = malloc(sizeof(registro_t));
+     size_t resultado = fread(leer,sizeof(registro_t),1,archivos[proviene-1]);
      if(resultado > 0){
-       heap_encolar(heap,registro);
+       heap_encolar(heap,leer);
      }
+     free(registro);
 
    }
+   fclose(salida);
+   finalizar(archivos,cant_particiones,heap);
+   return true;
+
+}
+
+int main(){
+
+ bool resultado =  ordenar_archivo("access001.log","archivo_salida_ordenado",1);
+ if(resultado){
+   printf("salio bien\n" );
+ }
+
+
 
 
 
