@@ -18,7 +18,7 @@
 int main(int argc,char* argv[]){
 	if(argc < 2)
 		return 0;
-	size_t M = 0;
+	size_t M = atoi(argv[1]);
 	
 	bool exit_flag = false;
 	abb_t* arbol_ips = abb_crear(comparar_ips,free);
