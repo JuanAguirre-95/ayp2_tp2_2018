@@ -17,6 +17,7 @@
 //CONSTANTES
 #define DOS_CANT 5 //la cantidad de accesos en x tiempo para determinar un DoS
 #define DOS_TIME 2.0 //el tiempo entre accesos para determinar un DoS
+#define TAM_MAX_LINEA 135
 
 
 //==========|Structs|============
@@ -69,7 +70,6 @@ int comparar_ips(const char* ip1, const char* ip2){		//TODO TRATAR DE MEJORAR ES
 			flag = 1;
 			break;
 		}
-
 		if(ip1_campos[i] < ip2_campos[i]){
 			flag = -1;
 			break;
@@ -464,7 +464,7 @@ bool interfaz(char** comando, size_t M, abb_t* arbol_ips){
 		if(cant_args != 3){
 			return exit_flag;
 		}
-		exit_flag = ordenar_archivo(M,comando[1],comando[2]);
+		exit_flag = ordenar_archivo(comando[1],comando[2],M);
 	}
 	if(strcmp(command, "agregar_archivo") == 0){					//AGREGAR_ARCHIVO
 		if(cant_args != 2){
@@ -479,6 +479,5 @@ bool interfaz(char** comando, size_t M, abb_t* arbol_ips){
 		exit_flag = ver_visitantes(arbol_ips,comando[1],comando[2]);
 	}
 
-	//abb_destruir(arbol_ips);
 	return exit_flag;
 }
