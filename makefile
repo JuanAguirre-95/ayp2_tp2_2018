@@ -21,9 +21,9 @@ git_push:
 build: $(sources)
 	gcc $(GCC_FLAGS) pruebas $(sources) 
 run: build
-	cat pruebas.txt | ./pruebas 0
+	cat pruebas.txt | ./pruebas 200
 chk: build
-	cat pruebas.txt | valgrind $(VAL_FLAGS) ./pruebas 0
+	cat pruebas.txt | valgrind $(VAL_FLAGS) ./pruebas 200
 	
 .PHONY : clean	
 clean:
