@@ -24,20 +24,20 @@
 
 /*STRUCT RESGISTRO_T*/
 typedef struct registro{
- char linea[TAM_MAX_LINEA];
- size_t n_particion;
+	char linea[TAM_MAX_LINEA];
+	size_t n_particion;
 }registro_t;
 
 /*CREAR REGISTRO*/
 registro_t* crear_registro(char* linea, size_t n_particion){
-  /*uso calloc pq sino tengo problemas con fwrite*/
-  registro_t* registro = calloc(1,sizeof(registro_t));
-  if(!registro){
-    return NULL;
-  }
-  strcpy(registro->linea,linea);
-  registro->n_particion = n_particion;
-  return registro;
+	/*uso calloc pq sino tengo problemas con fwrite*/
+	registro_t* registro = calloc(1,sizeof(registro_t));
+	if(!registro){
+	return NULL;
+	}
+	strcpy(registro->linea,linea);
+	registro->n_particion = n_particion;
+	return registro;
 }
 
 //===========|Conversor de tiempo|===========
@@ -51,7 +51,7 @@ time_t iso8601_to_time(const char* iso8601){
 //==========|FUNCIONES DE COMPARACION|===========
 
 /*Funcion comparar ips*/
-int comparar_ips(const char* ip1, const char* ip2){		//TODO TRATAR DE MEJORAR ESTA NEGRADA
+int comparar_ips(const char* ip1, const char* ip2){		//TODO TRATAR DE MEJORAR ESTO
 	int flag = 0;
 	char** ip1_partes = split(ip1, '.');
 	int ip1_campos[4];
@@ -82,40 +82,40 @@ int comparar_ips(const char* ip1, const char* ip2){		//TODO TRATAR DE MEJORAR ES
 
 /*Funcion comparar dos lineas de registro*/
 int comparar_lineas(char* linea1, char* linea2){
-  char** campos1 = split(linea1,'	');
-  char** campos2 = split(linea2,'	');
-  size_t resultado = comparar_ips(campos1[0],campos2[0]);
-  int retorno;
-  time_t tiempo1 = iso8601_to_time(campos1[1]);
-  time_t tiempo2 = iso8601_to_time(campos2[1]);
-  if(difftime(tiempo1,tiempo2) > 0){
-    retorno = 1;
-  }
-  else if(difftime(tiempo1,tiempo2) < 0){
-    retorno = -1;
-  }
-  else if(resultado == 1){
-    retorno = 1;
-  }
-  else if(resultado == -1){
-    retorno = -1;
-  }
-  else retorno = strcmp(campos1[3],campos2[3]);
-  free_strv(campos1);
-  free_strv(campos2);
-  return  -1*retorno;
+	char** campos1 = split(linea1,'	');
+	char** campos2 = split(linea2,'	');
+	size_t resultado = comparar_ips(campos1[0],campos2[0]);
+	int retorno;
+	time_t tiempo1 = iso8601_to_time(campos1[1]);
+	time_t tiempo2 = iso8601_to_time(campos2[1]);
+	if(difftime(tiempo1,tiempo2) > 0){
+		retorno = 1;
+	}
+	else if(difftime(tiempo1,tiempo2) < 0){
+		retorno = -1;
+	}
+	else if(resultado == 1){
+		retorno = 1;
+	}
+	else if(resultado == -1){
+		retorno = -1;
+	}
+	else retorno = strcmp(campos1[3],campos2[3]);
+	free_strv(campos1);
+	free_strv(campos2);
+	return  -1*retorno;
 }
 
 /*Wrapper de funcion comparar_lineas*/
 int func_comp(const void* a, const void* b){
- 	return comparar_lineas((char*)a,(char*)b);
+	return comparar_lineas((char*)a,(char*)b);
 }
 
 /*Funcion comparacion de registros*/
 int func_comp_registro(const void* a, const void* b){
-  registro_t* registro_1= (registro_t*)a;
-  registro_t* registro_2= (registro_t*)b;
- 	return comparar_lineas(registro_1->linea,registro_2->linea);
+	registro_t* registro_1= (registro_t*)a;
+	registro_t* registro_2= (registro_t*)b;
+	return comparar_lineas(registro_1->linea,registro_2->linea);
 }
 
 /*==========|ORDENAMIENTO EXTERNO|===========*/
@@ -125,156 +125,158 @@ Crea una particion retorna la cantidad de lineas leidas
  retorna -1 si ocurre un error
  0 si no se lee ninguna linea.*/
 size_t crear_particion(FILE* archivo_log, size_t tam_particion, size_t n_particion,char* nombre_salida){
-  size_t total_lineas = 0;
-  heap_t* heap = heap_crear(func_comp);
-  if(!heap){
-    return -1;
-  }
-  /*Encolo en un heap la cantidad de  lineas correspondientes a
-  la particion*/
-  char* linea_archivo=NULL;
-  size_t capacidad =0,leidos=0;
-  for(int i = 0 ; i < tam_particion ; i++){
-    leidos = getline(&linea_archivo,&capacidad,archivo_log);
-    if(leidos != -1){
-      total_lineas++;
-      linea_archivo[leidos-1] = '\0';
-      char* linea =  strdup(linea_archivo);
-      heap_encolar(heap,linea);
-    }else{
-      break;
-    }
-  }
-  FILE* archivo_salida = fopen(nombre_salida,"wb");
-  if(!archivo_salida){
-    heap_destruir(heap,free);
-    return -1;
-  }
-  /*Guardo en un archivo temporal la particion*/
-  while(!heap_esta_vacio(heap)){
-    char* linea = heap_desencolar(heap);
-    registro_t* registro = crear_registro(linea,n_particion);
-    if(!registro){
-      heap_destruir(heap,free);
-      fclose(archivo_salida);
-      return -1;
-    }
-    fwrite(registro,sizeof(registro_t),1,archivo_salida);
-    free(registro);
-    free(linea);
-  }
-  fclose(archivo_salida);
-  free(linea_archivo);
-  heap_destruir(heap,NULL);
-  return total_lineas;
+	size_t total_lineas = 0;
+	heap_t* heap = heap_crear(func_comp);
+	if(!heap){
+	return -1;
+	}
+	/*Encolo en un heap la cantidad de  lineas correspondientes a
+	la particion*/
+	char* linea_archivo=NULL;
+	size_t capacidad =0,leidos=0;
+	for(int i = 0 ; i < tam_particion ; i++){
+		leidos = getline(&linea_archivo,&capacidad,archivo_log);
+		if(leidos != -1){
+			total_lineas++;
+			linea_archivo[leidos-1] = '\0';
+			char* linea =  strdup(linea_archivo);
+			heap_encolar(heap,linea);
+		}
+		else{
+			break;
+		}
+	}
+	FILE* archivo_salida = fopen(nombre_salida,"wb");
+	if(!archivo_salida){
+		heap_destruir(heap,free);
+		return -1;
+	}
+	/*Guardo en un archivo temporal la particion*/
+	while(!heap_esta_vacio(heap)){
+		char* linea = heap_desencolar(heap);
+		registro_t* registro = crear_registro(linea,n_particion);
+		if(!registro){
+			heap_destruir(heap,free);
+			fclose(archivo_salida);
+			return -1;
+		}
+		fwrite(registro,sizeof(registro_t),1,archivo_salida);
+		free(registro);
+		free(linea);
+	}
+	fclose(archivo_salida);
+	free(linea_archivo);
+	heap_destruir(heap,NULL);
+	return total_lineas;
 }
 
 /*@crear_pariciones
 memoria disponibles son kb por eso multiplico por mil
 retorna la cantidad de particiones que se hicieron*/
 size_t crear_particiones(char* nombre_archivo, size_t memoria_disponible){
-  size_t cant_lineas = (memoria_disponible*1000)/TAM_MAX_LINEA;
-  FILE* archivo = fopen(nombre_archivo,"r");
-  if(!archivo){
-    return -1 ;
-  }
-  char nombre_archivo_salida[15];
-  size_t cant_particiones = 1;
-  size_t lineas_guardadas;
-  while(!feof(archivo)){
-    sprintf(nombre_archivo_salida,"archivo%i.log",cant_particiones);
-    lineas_guardadas = crear_particion(archivo,cant_lineas,cant_particiones,nombre_archivo_salida);
-    if(lineas_guardadas > 0){
-      cant_particiones++;
-    }else{
-      /*por como trabaja feof se ejecuta una vez de mas el while y
-      se crea la misma particion final, por eso borro el ultimo archivo*/
-      remove(nombre_archivo_salida);
-      break;
-    }
-  }
-  fclose(archivo);
-  return cant_particiones-1;
+	size_t cant_lineas = (memoria_disponible*1000)/TAM_MAX_LINEA;
+	FILE* archivo = fopen(nombre_archivo,"r");
+	if(!archivo){
+	return -1 ;
+	}
+	char nombre_archivo_salida[15];
+	size_t cant_particiones = 1;
+	size_t lineas_guardadas;
+	while(!feof(archivo)){
+		sprintf(nombre_archivo_salida,"archivo%zu.log",cant_particiones);
+		lineas_guardadas = crear_particion(archivo,cant_lineas,cant_particiones,nombre_archivo_salida);
+		if(lineas_guardadas > 0){
+			cant_particiones++;
+		}else{
+			/*por como trabaja feof se ejecuta una vez de mas el while y
+			se crea la misma particion final, por eso borro el ultimo archivo*/
+			remove(nombre_archivo_salida);
+			break;
+		}
+	}
+	fclose(archivo);
+	return cant_particiones-1;
 }
 
 /*@cerrar_archivos
 cierra los archivos temporales*/
 void  cerrar_archivos(FILE** archivos,size_t tam){
-  for(size_t i = 0; i < tam ; i++){
-    fclose(archivos[i]);
-  }
-  free(archivos);
+	for(size_t i = 0; i < tam ; i++){
+		fclose(archivos[i]);
+	}
+	free(archivos);
 }
 
 
 /*@remove_archivos
 remueve los archivos temporales*/
 void remove_archivos(size_t cantidad_archivos){
-  char nombre_archivo_particion[15];
-  for(size_t i = 0; i < cantidad_archivos ; i++){
-      sprintf(nombre_archivo_particion,"archivo%i.log",i+1);
-      remove(nombre_archivo_particion);
-  }
+	char nombre_archivo_particion[15];
+	for(size_t i = 0; i < cantidad_archivos ; i++){
+		sprintf(nombre_archivo_particion,"archivo%zu.log",i+1);
+		remove(nombre_archivo_particion);
+	}
 }
 
 /*@finalizar
 cierra archivos, los rumueve, y destruye el heap*/
 void finalizar(FILE** archivos,size_t cant_particiones,heap_t* heap){
-  cerrar_archivos(archivos,cant_particiones);
-  remove_archivos(cant_particiones);
-  heap_destruir(heap,free);
+	cerrar_archivos(archivos,cant_particiones);
+	remove_archivos(cant_particiones);
+	heap_destruir(heap,free);
 
 }
 /*@ordenar_archivo
 ordena el archivo
 */
 bool ordenar_archivo(char* nombre_archivo,char* nombre_salida, size_t memoria_disponible){
-   char nombre_archivo_particion[15];
-   size_t cant_particiones =  crear_particiones(nombre_archivo,memoria_disponible);
-   heap_t* heap = heap_crear(func_comp_registro);
-   if(!heap){
-     return false;
-   }
-   FILE** archivos = calloc(cant_particiones,sizeof(FILE*));
-   if(!archivos){
-     heap_destruir(heap,free);
-     return false;
-   }
-   for(int i = 0 ; i < cant_particiones ; i++){
-      sprintf(nombre_archivo_particion,"archivo%i.log",i+1);
-      FILE* archivo = fopen(nombre_archivo_particion,"rb");
-      if(!archivo){
-        heap_destruir(heap,free);
-        cerrar_archivos(archivos,i-1);
-        remove_archivos(cant_particiones);
-        return false;
-      }
-      archivos[i] = archivo;
-      registro_t* registro = malloc(sizeof(registro_t));
-      fread(registro,sizeof(registro_t),1,archivo);
-      heap_encolar(heap,registro);
-   }
-   FILE* salida = fopen(nombre_salida, "w");
-   if(!salida){
-     finalizar(archivos,cant_particiones,heap);
-     return false;
-   }
-   while(!heap_esta_vacio(heap)){
-     registro_t* registro = heap_desencolar(heap);
-     size_t proviene = registro->n_particion;
-     fprintf(salida,"%s\n",registro->linea);
-     registro_t* leer = malloc(sizeof(registro_t));
-     size_t resultado = fread(leer,sizeof(registro_t),1,archivos[proviene-1]);
-     if(resultado > 0){
-       heap_encolar(heap,leer);
-     }else{
-       free(leer);
-     }
-     free(registro);
-   }
-   fclose(salida);
-   finalizar(archivos,cant_particiones,heap);
-   return true;
+	 char nombre_archivo_particion[15];
+	 size_t cant_particiones =  crear_particiones(nombre_archivo,memoria_disponible);
+	 heap_t* heap = heap_crear(func_comp_registro);
+	 if(!heap){
+	 	return false;
+	 }
+	 FILE** archivos = calloc(cant_particiones,sizeof(FILE*));
+	 if(!archivos){
+	 	heap_destruir(heap,free);
+	 	return false;
+	 }
+	 for(size_t i = 0 ; i < cant_particiones ; i++){
+		sprintf(nombre_archivo_particion,"archivo%zu.log",i+1);
+		FILE* archivo = fopen(nombre_archivo_particion,"rb");
+		if(!archivo){
+			heap_destruir(heap,free);
+			cerrar_archivos(archivos,i-1);
+			remove_archivos(cant_particiones);
+			return false;
+		}
+		archivos[i] = archivo;
+		registro_t* registro = malloc(sizeof(registro_t));
+		fread(registro,sizeof(registro_t),1,archivo);
+		heap_encolar(heap,registro);
+	 }
+	 FILE* salida = fopen(nombre_salida, "w");
+	 if(!salida){
+	 	finalizar(archivos,cant_particiones,heap);
+	 	return false;
+	 }
+	 while(!heap_esta_vacio(heap)){
+	 	registro_t* registro = heap_desencolar(heap);
+	 	size_t proviene = registro->n_particion;
+	 	fprintf(salida,"%s\n",registro->linea);
+	 	registro_t* leer = malloc(sizeof(registro_t));
+	 	size_t resultado = fread(leer,sizeof(registro_t),1,archivos[proviene-1]);
+	 	if(resultado > 0){
+			 heap_encolar(heap,leer);
+	 	}
+	 	else{
+		 	free(leer);
+	 	}
+	 	free(registro);
+	 }
+	 fclose(salida);
+	 finalizar(archivos,cant_particiones,heap);
+	 return true;
 }
 
 //Wrapper para lista_destruir
@@ -334,7 +336,7 @@ bool verificar_accesos(lista_t* lista_tiempo){
 	while(!lista_esta_vacia(lista_tiempo)){
 		time_t tiempo1 = (time_t)lista_iter_ver_actual(iter1);
 		time_t tiempo2 = (time_t)lista_iter_ver_actual(iter2);
-		if(difftime(tiempo2,tiempo1) <= DOS_TIME){
+		if(difftime(tiempo2,tiempo1) < DOS_TIME){
 			lista_iter_destruir(iter1);
 			lista_iter_destruir(iter2);
 			return true;
@@ -354,7 +356,7 @@ abb_t* check_dos(hash_t* hash_tiempos){			//Devuelve un arbol con las ips que ca
 	abb_t* arbol_dos = abb_crear(comparar_ips,free);
 	if(!arbol_dos){
 		return NULL;
-  }
+	}
 	hash_iter_t* iter = hash_iter_crear(hash_tiempos);
 	if(!iter){
 		abb_destruir(arbol_dos);
@@ -392,7 +394,7 @@ bool agregar_archivo(char* nombre_archivo, abb_t* arbol_ips){
 	FILE* archivo = fopen(nombre_archivo,"r");
 	if(!archivo){
 		return false;
-  }
+	}
 	hash_t* hash_tiempos = hash_crear(wrapper_lista_destruir);
 	if(!hash_tiempos){
 		fclose(archivo);
